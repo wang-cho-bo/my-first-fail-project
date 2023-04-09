@@ -1,0 +1,77 @@
+import urllib
+import requests
+from bs4 import BeautifulSoup
+import re
+from fileinput import filename
+from io import BytesIO
+import re
+import requests
+from utils import Soup, LazyUrl, Downloader, Session, clean_title
+import clf2
+import json
+
+
+from utils import Downloader
+
+class Downloader_anilife (Downloader):
+    type = 'anilife'
+    URLS = ['anilife.live']
+    single = True
+
+    def read(self):
+        video_url = 'https://anilife.live/h/live?p={p}&player=jawcloud'; # 동영상 URL
+        ws_url = self.get_ws_url(video_url) # 신호 서비스 주소
+        params = self.get_params(self.url) # self.url에서 파라미터 추출
+        ws_url = ws_url.replace('{id}', self.get_id(video_url)) # id 값 적용
+        video_url = urllib.parse.quote(video_url, safe=':/?=&') # URL 인코딩
+        ws_url = urllib.parse.quote(ws_url, safe=':/?=&') # URL 인코딩
+        self.urls.append(video_url)
+        self.title = self.get_filename(video_url)
+        
+        # 파일 이름에 사용할 수 없는 문자를 바꾸거나 제거하는 코드 추가
+        try:
+          if '\\\\' or '/' or ':' or '*' or '?' or '\"' or '<' or '>' or '|' in video_url:
+            video_url = video_url.replace('\\\\', '_')
+            video_url = video_url.replace('/', '_')
+            video_url = video_url.replace(':', '_')
+            video_url = video_url.replace('*', '_')
+            video_url = video_url.replace('?', '_')
+            video_url = video_url.replace('<', '_')
+            video_url = video_url.replace('>', '_')
+            video_url = video_url.replace('|', '_')
+        except:
+          pass
+        
+        self.urls.append(video_url)
+        self.title = self.get_filename(video_url)
+
+    def get_soup(self, url):
+        return BeautifulSoup(requests.get(url).text, 'html.parser')
+
+    def get_filename(self, url):
+        return url.split('/')[-1]
+
+    def get_params(self, url):
+        params = {}
+        for item in url.split('?')[-1].split('&'):
+            key, value = item.split('=')
+            params[key] = value
+        return params
+
+    def get_ws_url(self, url):
+        soup = self.get_soup(url)
+        script = soup.find('script', src=re.compile('cdnbye'))
+        if script:
+            return script['src'].split('?')[-1]
+        else:
+            return 'wss://jp.cdnbye.com/?id=3163sLAmnBY4g&p=web&v=2.7.0'
+
+    def get_id(self, url):
+        soup = self.get_soup(url)
+        script = soup.find('script', src=re.compile('cdnbye'))
+        if script:
+            return script['src'].split('=')[-1]
+        else:
+            return '3163sLAmnBY4g'
+
+path = r"C:\\Apps\\CorVu\\DATA\\Reports\\AlliD\\Monthly Commission Reports\\Output\\pdcom1"
